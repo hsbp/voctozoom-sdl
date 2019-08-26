@@ -1,0 +1,10 @@
+[package]
+name = "voctozoom-sdl"
+version = "0.1.0"
+authors = ["András Veres-Szentkirályi <vsza@vsza.hu>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sdl2 = "0.32"
