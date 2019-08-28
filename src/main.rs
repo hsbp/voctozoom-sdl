@@ -27,6 +27,12 @@ struct Crop {
     h: u16,
 }
 
+impl Into<Rect> for Crop {
+    fn into(self) -> Rect {
+        Rect::new(self.x as i32, self.y as i32, self.w as u32, self.h as u32)
+    }
+}
+
 struct ChannelState {
     crop: Crop,
     full_rect: Rect,
@@ -68,10 +74,7 @@ fn main() {
 
         canvas.copy(&tx, None, channel.full_rect).unwrap();
 
-        let crop = if channel.crop == FULL_CROP { None } else {
-            let c = channel.crop;
-            Some(Rect::new(c.x as i32, c.y as i32, c.w as u32, c.h as u32))
-        };
+        let crop = if channel.crop == FULL_CROP { None } else { Some(channel.crop.into()) };
 
         canvas.copy(&tx, crop, channel.zoom_rect).unwrap();
     }
