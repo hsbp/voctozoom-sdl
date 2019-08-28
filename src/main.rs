@@ -13,6 +13,26 @@ const WIDTH: usize = 1280;
 const HEIGHT: usize = 720;
 const BYTES_PER_PIXEL: usize = 3;
 const BYTES_PER_FRAME: usize = WIDTH * HEIGHT * BYTES_PER_PIXEL;
+const FULL_CROP: Crop = Crop { x: 0, y: 0, w: WIDTH as u16, h: HEIGHT as u16 };
+const PIXEL_FORMAT: PixelFormatEnum = PixelFormatEnum::RGB24;
+
+const WIN_WIDTH:  u32 = (WIDTH  / 2) as u32;
+const WIN_HEIGHT: u32 = (HEIGHT / 2) as u32;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct Crop {
+    x: u16,
+    y: u16,
+    w: u16,
+    h: u16,
+}
+
+struct ChannelState {
+    crop: Crop,
+    full_rect: Rect,
+    zoom_rect: Rect,
+    server: TcpStream,
+}
 
 fn main() {
     let sdl = sdl2::init().unwrap();
@@ -23,20 +43,38 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut ts = TcpStream::connect("127.0.0.1:20000").unwrap();
-    ts.write(b"get_image\n").unwrap();
-    let mut frame: [u8; BYTES_PER_FRAME] = [0; BYTES_PER_FRAME];
-    ts.read_exact(& mut frame).unwrap();
+    let mut state = [ChannelState {
+        crop: FULL_CROP,
+        full_rect: Rect::new(0, 0,                 WIN_WIDTH, WIN_HEIGHT),
+        zoom_rect: Rect::new(0, WIN_HEIGHT as i32, WIN_WIDTH, WIN_HEIGHT),
+        server: TcpStream::connect("127.0.0.1:20000").unwrap(),
+        // TODO add second channel
+    }];
 
     let mut canvas : Canvas<Window> = window.into_canvas()
         .present_vsync() //< this means the screen cannot
         // render faster than your display rate (usually 60Hz or 144Hz)
         .build().unwrap();
 
-    let surf = Surface::from_data(& mut frame, WIDTH as u32, HEIGHT as u32, 3 * WIDTH as u32, PixelFormatEnum::RGB24).unwrap();
-    let tc = canvas.texture_creator();
-    let tx = tc.create_texture_from_surface(surf).unwrap();
-    canvas.copy(&tx, None, None).unwrap();
+    for channel in &mut state {
+        channel.server.write(b"get_image\n").unwrap();
+        let mut frame: [u8; BYTES_PER_FRAME] = [0; BYTES_PER_FRAME];
+        channel.server.read_exact(& mut frame).unwrap();
+
+        let surf = Surface::from_data(& mut frame, WIDTH as u32, HEIGHT as u32, 3 * WIDTH as u32, PIXEL_FORMAT).unwrap();
+
+        let tc = canvas.texture_creator();
+        let tx = tc.create_texture_from_surface(surf).unwrap();
+
+        canvas.copy(&tx, None, channel.full_rect).unwrap();
+
+        let crop = if channel.crop == FULL_CROP { None } else {
+            let c = channel.crop;
+            Some(Rect::new(c.x as i32, c.y as i32, c.w as u32, c.h as u32))
+        };
+
+        canvas.copy(&tx, crop, channel.zoom_rect).unwrap();
+    }
 
     // XXX eprintln!("{:?}", canvas.output_size());
 
