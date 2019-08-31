@@ -147,13 +147,18 @@ fn main() {
                             let cx = ((mx - channel.zoom_rect.left()) * (r.width() as i32)) / (WIN_WIDTH  as i32) + r.left();
                             let cy = ((my - channel.zoom_rect.top()) * (r.height() as i32)) / (WIN_HEIGHT as i32) + r.top();
                             let factor = if y > 0 { ZOOM_FACTOR } else { 1.0 / ZOOM_FACTOR };
-                            let mut nr = Rect::from_center((cx, cy), (r.width() as f32 * factor) as u32, (r.height() as f32 * factor) as u32);
-                            eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
-                            let ox = if nr.left() < 0 { -nr.left() } else
-                                if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
-                            let oy = if nr.top() < 0 { -nr.top() } else
-                                if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
-                            nr.offset(ox, oy);
+                            let nw = (r.width()  as f32 * factor) as u32;
+                            let nh = (r.height() as f32 * factor) as u32;
+                            let nr = if nw >= WIDTH as u32 || nh >= HEIGHT as u32 { FULL_CROP.into() } else {
+                                let mut nr = Rect::from_center((cx, cy), nw, nh);
+                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nw, nh);
+                                let ox = if nr.left() < 0 { -nr.left() } else
+                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
+                                let oy = if nr.top() < 0 { -nr.top() } else
+                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
+                                nr.offset(ox, oy);
+                                nr
+                            };
                             if channel.set_crop(nr) {
                                 update_video(& mut canvas, & mut state);
                             }
