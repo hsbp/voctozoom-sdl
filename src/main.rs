@@ -144,8 +144,8 @@ fn main() {
                         if channel.zoom_rect.contains_point(mouse_pos) {
                             let r: Rect = channel.crop.into();
                             let (mx, my) = mouse_pos;
-                            let cx = ((mx - channel.zoom_rect.left()) * (r.width() as i32)) / (WIN_WIDTH  as i32);
-                            let cy = ((my - channel.zoom_rect.top()) * (r.height() as i32)) / (WIN_HEIGHT as i32);
+                            let cx = ((mx - channel.zoom_rect.left()) * (r.width() as i32)) / (WIN_WIDTH  as i32) + r.left();
+                            let cy = ((my - channel.zoom_rect.top()) * (r.height() as i32)) / (WIN_HEIGHT as i32) + r.top();
                             let factor = if y > 0 { ZOOM_FACTOR } else { 1.0 / ZOOM_FACTOR };
                             let mut nr = Rect::from_center((cx, cy), (r.width() as f32 * factor) as u32, (r.height() as f32 * factor) as u32);
                             eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
