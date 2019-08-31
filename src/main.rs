@@ -52,10 +52,7 @@ impl ChannelState {
         eprintln!("{:?} =?= {:?}", new_crop, self.crop);
         if new_crop == self.crop { return false; }
 
-        self.server.write(&format!("zoom_to {}x{}+{}+{}\n", nr.width(), nr.height(), nr.left(), nr.top()).into_bytes()).unwrap();
-        let mut br = BufReader::new(&self.server);
-        let mut line = String::new();
-        br.read_line(&mut line).unwrap();
+        let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", nr.width(), nr.height(), nr.left(), nr.top()));
         eprintln!("{:?}", line);
         if line == "OK\n" {
             self.crop = new_crop;
@@ -63,6 +60,14 @@ impl ChannelState {
         } else {
             return false;
         }
+    }
+
+    fn text_cmd(& mut self, cmd: String) -> String {
+        self.server.write(&cmd.into_bytes()).unwrap();
+        let mut br = BufReader::new(&self.server);
+        let mut line = String::new();
+        br.read_line(&mut line).unwrap();
+        line
     }
 }
 
