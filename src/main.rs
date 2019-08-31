@@ -127,6 +127,7 @@ fn main() {
                                 if channel.set_crop(nr) {
                                     update_video(& mut canvas, & mut state);
                                 }
+                                mouse_start_pos = Some(mouse_pos);
                                 break 'motion_states;
                             }
                         }
