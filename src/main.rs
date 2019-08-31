@@ -89,6 +89,8 @@ fn main() {
         // TODO add second channel
     }];
 
+    sanity_check(& mut state);
+
     let mut canvas : Canvas<Window> = window.into_canvas()
         .present_vsync() //< this means the screen cannot
         // render faster than your display rate (usually 60Hz or 144Hz)
@@ -163,6 +165,14 @@ fn main() {
         }
         get_video(& mut state);
         update_video(& mut canvas, & mut state);
+    }
+}
+
+fn sanity_check(state: & mut [ChannelState]) {
+    for channel in &mut state.iter_mut() {
+        if channel.text_cmd(String::from("get_resolution\n")) != format!("{}x{}\n", WIDTH, HEIGHT) {
+            panic!("Invalid resolution, must be {}x{}", WIDTH, HEIGHT);
+        }
     }
 }
 
