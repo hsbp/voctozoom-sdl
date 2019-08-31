@@ -216,5 +216,4 @@ fn update_video(canvas: & mut Canvas<Window>, state: & mut [ChannelState]) {
     // we need to call `present`. We need to call this everytime
     // we want to render a new frame on the window.
     canvas.present();
-
 }
