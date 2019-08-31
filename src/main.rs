@@ -2,6 +2,7 @@ extern crate sdl2;
 
 use std::net::{TcpStream};
 use std::io::{Read, Write};
+use std::io::{BufRead,BufReader};
 
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
@@ -19,7 +20,9 @@ const PIXEL_FORMAT: PixelFormatEnum = PixelFormatEnum::RGB24;
 const WIN_WIDTH:  u32 = (WIDTH  / 2) as u32;
 const WIN_HEIGHT: u32 = (HEIGHT / 2) as u32;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+const ZOOM_FACTOR: f32 = 0.9;
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Crop {
     x: u16,
     y: u16,
@@ -38,6 +41,29 @@ struct ChannelState {
     full_rect: Rect,
     zoom_rect: Rect,
     server: TcpStream,
+    frame: [u8; BYTES_PER_FRAME],
+}
+
+impl ChannelState {
+    fn set_crop(& mut self, nr: Rect) -> bool {
+        eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
+        let new_crop = Crop { x: nr.left() as u16, y: nr.top() as u16,
+        w: nr.width() as u16, h: nr.height() as u16 };
+        eprintln!("{:?} =?= {:?}", new_crop, self.crop);
+        if new_crop == self.crop { return false; }
+
+        self.server.write(&format!("zoom_to {}x{}+{}+{}\n", nr.width(), nr.height(), nr.left(), nr.top()).into_bytes()).unwrap();
+        let mut br = BufReader::new(&self.server);
+        let mut line = String::new();
+        br.read_line(&mut line).unwrap();
+        eprintln!("{:?}", line);
+        if line == "OK\n" {
+            self.crop = new_crop;
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
 
 fn main() {
@@ -54,6 +80,7 @@ fn main() {
         full_rect: Rect::new(0, 0,                 WIN_WIDTH, WIN_HEIGHT),
         zoom_rect: Rect::new(0, WIN_HEIGHT as i32, WIN_WIDTH, WIN_HEIGHT),
         server: TcpStream::connect("127.0.0.1:20000").unwrap(),
+        frame: [0; BYTES_PER_FRAME],
         // TODO add second channel
     }];
 
@@ -62,21 +89,108 @@ fn main() {
         // render faster than your display rate (usually 60Hz or 144Hz)
         .build().unwrap();
 
-    for channel in &mut state {
-        channel.server.write(b"get_image\n").unwrap();
-        let mut frame: [u8; BYTES_PER_FRAME] = [0; BYTES_PER_FRAME];
-        channel.server.read_exact(& mut frame).unwrap();
+    get_video(& mut state);
+    update_video(& mut canvas, & mut state);
 
-        let surf = Surface::from_data(& mut frame, WIDTH as u32, HEIGHT as u32, 3 * WIDTH as u32, PIXEL_FORMAT).unwrap();
+    let mut event_pump = sdl.event_pump().unwrap();
+    let mut mouse_start_pos: Option<(i32, i32)> = None;
+    let mut mouse_pos: (i32, i32) = (0, 0);
+
+    'main: loop {
+        for event in event_pump.wait_timeout_iter(200) {
+            match event {
+                sdl2::event::Event::Quit {..} => break 'main,
+                sdl2::event::Event::MouseMotion { x, y, .. } => {
+                    mouse_pos = (x, y);
+                    if let Some(s) = mouse_start_pos {
+                        'motion_states: for channel in &mut state {
+                            if channel.zoom_rect.contains_point(s) &&
+                                    channel.zoom_rect.contains_point(mouse_pos) {
+                                let (sx, sy) = s;
+                                let mut nr: Rect = channel.crop.into();
+                                let dx = ((sx - x) * (nr.width()  as i32)) / (WIN_WIDTH  as i32);
+                                let dy = ((sy - y) * (nr.height() as i32)) / (WIN_HEIGHT as i32);
+                                nr.offset(dx, dy);
+                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
+                                let ox = if nr.left() < 0 { -nr.left() } else
+                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
+                                let oy = if nr.top() < 0 { -nr.top() } else
+                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
+                                nr.offset(ox, oy);
+                                if channel.set_crop(nr) {
+                                    update_video(& mut canvas, & mut state);
+                                }
+                                break 'motion_states;
+                            }
+                        }
+                    }
+                },
+                sdl2::event::Event::MouseButtonDown { x, y, .. } => {
+                    mouse_start_pos = Some((x, y));
+                },
+                sdl2::event::Event::MouseButtonUp {..} => {
+                    mouse_start_pos = None;
+                },
+                sdl2::event::Event::MouseWheel { y, .. } => {
+                    'wheel_states: for channel in &mut state {
+                        if channel.zoom_rect.contains_point(mouse_pos) {
+                            let r: Rect = channel.crop.into();
+                            let (mx, my) = mouse_pos;
+                            let cx = ((mx - channel.zoom_rect.left()) * (r.width() as i32)) / (WIN_WIDTH  as i32);
+                            let cy = ((my - channel.zoom_rect.top()) * (r.height() as i32)) / (WIN_HEIGHT as i32);
+                            let factor = if y > 0 { ZOOM_FACTOR } else { 1.0 / ZOOM_FACTOR };
+                            let mut nr = Rect::from_center((cx, cy), (r.width() as f32 * factor) as u32, (r.height() as f32 * factor) as u32);
+                            eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
+                            let ox = if nr.left() < 0 { -nr.left() } else
+                                if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
+                            let oy = if nr.top() < 0 { -nr.top() } else
+                                if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
+                            nr.offset(ox, oy);
+                            if channel.set_crop(nr) {
+                                update_video(& mut canvas, & mut state);
+                            }
+                            break 'wheel_states;
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+        get_video(& mut state);
+        update_video(& mut canvas, & mut state);
+    }
+}
+
+fn get_video(state: & mut [ChannelState]) {
+    for channel in &mut state.iter_mut() {
+        channel.server.write(b"get_image\n").unwrap();
+        channel.server.read_exact(& mut channel.frame).unwrap();
+    }
+}
+
+fn update_video(canvas: & mut Canvas<Window>, state: & mut [ChannelState]) {
+    for channel in &mut state.iter_mut() {
+        let surf = Surface::from_data(& mut channel.frame, WIDTH as u32, HEIGHT as u32, 3 * WIDTH as u32, PIXEL_FORMAT).unwrap();
 
         let tc = canvas.texture_creator();
         let tx = tc.create_texture_from_surface(surf).unwrap();
 
         canvas.copy(&tx, None, channel.full_rect).unwrap();
 
-        let crop = if channel.crop == FULL_CROP { None } else { Some(channel.crop.into()) };
+        let mut selected: Rect = channel.crop.into();
+
+        let crop = if channel.crop == FULL_CROP { None } else { Some(selected) };
 
         canvas.copy(&tx, crop, channel.zoom_rect).unwrap();
+
+        selected.set_width (selected.width()  / 2);
+        selected.set_height(selected.height() / 2);
+        selected.set_x        (selected.x()   / 2);
+        selected.set_y       (selected.y()    / 2);
+        selected.offset(channel.full_rect.left(), 0);
+
+        canvas.set_draw_color(Color::RGB(255, 0, 0));
+        canvas.draw_rect(selected).unwrap();
     }
 
     // XXX eprintln!("{:?}", canvas.output_size());
@@ -88,13 +202,4 @@ fn main() {
     // we want to render a new frame on the window.
     canvas.present();
 
-    let mut event_pump = sdl.event_pump().unwrap();
-    'main: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                sdl2::event::Event::Quit {..} => break 'main,
-                _ => {},
-            }
-        }
-    }
 }
