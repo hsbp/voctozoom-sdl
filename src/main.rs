@@ -113,10 +113,8 @@ fn main() {
                         'motion_states: for channel in &mut state {
                             if channel.zoom_rect.contains_point(s) &&
                                     channel.zoom_rect.contains_point(mouse_pos) {
-                                let (sx, sy) = s;
                                 let mut nr: Rect = channel.crop.into();
-                                let dx = ((sx - x) * (nr.width()  as i32)) / (WIN_WIDTH  as i32);
-                                let dy = ((sy - y) * (nr.height() as i32)) / (WIN_HEIGHT as i32);
+                                let (dx, dy) = scale_point_from_window(mouse_pos, s, WIDTH as i32, HEIGHT as i32, 0, 0);
                                 nr.offset(dx, dy);
                                 eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
                                 let ox = if nr.left() < 0 { -nr.left() } else
@@ -132,10 +130,8 @@ fn main() {
                             }
                             if channel.full_rect.contains_point(s) &&
                                     channel.full_rect.contains_point(mouse_pos) {
-                                let (sx, sy) = s;
                                 let mut nr: Rect = channel.crop.into();
-                                let dx = ((x - sx) * (WIDTH  as i32)) / (WIN_WIDTH  as i32);
-                                let dy = ((y - sy) * (HEIGHT as i32)) / (WIN_HEIGHT as i32);
+                                let (dx, dy) = scale_point_from_window(s, mouse_pos, WIDTH as i32, HEIGHT as i32, 0, 0);
                                 nr.offset(dx, dy);
                                 eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
                                 let ox = if nr.left() < 0 { -nr.left() } else
@@ -162,14 +158,13 @@ fn main() {
                     'wheel_states: for channel in &mut state {
                         if channel.zoom_rect.contains_point(mouse_pos) {
                             let r: Rect = channel.crop.into();
-                            let (mx, my) = mouse_pos;
-                            let cx = ((mx - channel.zoom_rect.left()) * (r.width() as i32)) / (WIN_WIDTH  as i32) + r.left();
-                            let cy = ((my - channel.zoom_rect.top()) * (r.height() as i32)) / (WIN_HEIGHT as i32) + r.top();
+                            let p = scale_point_from_window(channel.zoom_rect.top_left().into(), mouse_pos,
+                                r.width() as i32, r.height() as i32, r.left(), r.top());
                             let factor = if y > 0 { ZOOM_FACTOR } else { 1.0 / ZOOM_FACTOR };
                             let nw = (r.width()  as f32 * factor) as u32;
                             let nh = (r.height() as f32 * factor) as u32;
                             let nr = if nw >= WIDTH as u32 || nh >= HEIGHT as u32 { FULL_CROP.into() } else {
-                                let mut nr = Rect::from_center((cx, cy), nw, nh);
+                                let mut nr = Rect::from_center(p, nw, nh);
                                 eprintln!("nr = {:?}, w = {}, h = {}", nr, nw, nh);
                                 let ox = if nr.left() < 0 { -nr.left() } else
                                     if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
@@ -191,6 +186,14 @@ fn main() {
         get_video(& mut state);
         update_video(& mut canvas, & mut state);
     }
+}
+
+fn scale_point_from_window(point: (i32, i32), offset: (i32, i32), width: i32, height: i32, left: i32, top: i32) -> (i32, i32) {
+    let (x, y) = point;
+    let (sx, sy) = offset;
+    let dx = ((sx - x) *  width) / (WIN_WIDTH  as i32) + left;
+    let dy = ((sy - y) * height) / (WIN_HEIGHT as i32) + top;
+    (dx, dy)
 }
 
 fn sanity_check(state: & mut [ChannelState]) {
