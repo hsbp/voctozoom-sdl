@@ -206,7 +206,7 @@ fn update_video(canvas: & mut Canvas<Window>, state: & mut [ChannelState]) {
 
         selected.set_width (selected.width()  / 2);
         selected.set_height(selected.height() / 2);
-        selected.set_x        (selected.x()   / 2);
+        selected.set_x       (selected.x()    / 2);
         selected.set_y       (selected.y()    / 2);
         selected.offset(channel.full_rect.left(), 0);
 
