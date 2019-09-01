@@ -130,6 +130,25 @@ fn main() {
                                 mouse_start_pos = Some(mouse_pos);
                                 break 'motion_states;
                             }
+                            if channel.full_rect.contains_point(s) &&
+                                    channel.full_rect.contains_point(mouse_pos) {
+                                let (sx, sy) = s;
+                                let mut nr: Rect = channel.crop.into();
+                                let dx = ((x - sx) * (WIDTH  as i32)) / (WIN_WIDTH  as i32);
+                                let dy = ((y - sy) * (HEIGHT as i32)) / (WIN_HEIGHT as i32);
+                                nr.offset(dx, dy);
+                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
+                                let ox = if nr.left() < 0 { -nr.left() } else
+                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
+                                let oy = if nr.top() < 0 { -nr.top() } else
+                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
+                                nr.offset(ox, oy);
+                                if channel.set_crop(nr) {
+                                    update_video(& mut canvas, & mut state);
+                                }
+                                mouse_start_pos = Some(mouse_pos);
+                                break 'motion_states;
+                            }
                         }
                     }
                 },
