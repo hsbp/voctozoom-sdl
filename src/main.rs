@@ -41,7 +41,7 @@ struct ChannelState {
     full_rect: Rect,
     zoom_rect: Rect,
     server: TcpStream,
-    frame: [u8; BYTES_PER_FRAME],
+    frame: Vec<u8>,
 }
 
 impl ChannelState {
@@ -85,7 +85,7 @@ fn main() {
         full_rect: Rect::new(0, 0,                 WIN_WIDTH, WIN_HEIGHT),
         zoom_rect: Rect::new(0, WIN_HEIGHT as i32, WIN_WIDTH, WIN_HEIGHT),
         server: TcpStream::connect("127.0.0.1:20000").unwrap(),
-        frame: [0; BYTES_PER_FRAME],
+        frame: vec![0; BYTES_PER_FRAME],
         // TODO add second channel
     }];
 
