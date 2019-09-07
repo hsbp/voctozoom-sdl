@@ -47,18 +47,16 @@ struct ChannelState {
 
 impl ChannelState {
     fn set_crop(& mut self, nr: Rect) -> bool {
-        eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
         let new_crop = Crop { x: max(0, nr.left()) as u16, y: max(0, nr.top()) as u16,
         w: min(WIDTH as u32, nr.width()) as u16, h: min(HEIGHT as u32, nr.height()) as u16 };
-        eprintln!("{:?} =?= {:?}", new_crop, self.crop);
         if new_crop == self.crop { return false; }
 
         let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", nr.width(), nr.height(), nr.left(), nr.top()));
-        eprintln!("{:?}", line);
         if line == "OK\n" {
             self.crop = new_crop;
             return true;
         } else {
+            eprintln!("{:?}", line);
             return false;
         }
     }
