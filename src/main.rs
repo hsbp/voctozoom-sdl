@@ -3,6 +3,7 @@ extern crate sdl2;
 use std::net::{TcpStream};
 use std::io::{Read, Write};
 use std::io::{BufRead,BufReader};
+use std::cmp::{min,max};
 
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
@@ -47,8 +48,8 @@ struct ChannelState {
 impl ChannelState {
     fn set_crop(& mut self, nr: Rect) -> bool {
         eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
-        let new_crop = Crop { x: nr.left() as u16, y: nr.top() as u16,
-        w: nr.width() as u16, h: nr.height() as u16 };
+        let new_crop = Crop { x: max(0, nr.left()) as u16, y: max(0, nr.top()) as u16,
+        w: min(WIDTH as u32, nr.width()) as u16, h: min(HEIGHT as u32, nr.height()) as u16 };
         eprintln!("{:?} =?= {:?}", new_crop, self.crop);
         if new_crop == self.crop { return false; }
 
