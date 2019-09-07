@@ -51,7 +51,7 @@ impl ChannelState {
         w: min(WIDTH as u32, nr.width()) as u16, h: min(HEIGHT as u32, nr.height()) as u16 };
         if new_crop == self.crop { return false; }
 
-        let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", nr.width(), nr.height(), nr.left(), nr.top()));
+        let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", new_crop.w, new_crop.h, new_crop.x, new_crop.y));
         if line == "OK\n" {
             self.crop = new_crop;
             return true;
