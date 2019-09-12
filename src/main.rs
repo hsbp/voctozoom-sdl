@@ -47,7 +47,13 @@ struct ChannelState {
 }
 
 impl ChannelState {
-    fn set_crop(& mut self, nr: Rect) -> bool {
+    fn set_crop(& mut self, mut nr: Rect) -> bool {
+        let ox = if nr.left() < 0 { -nr.left() } else
+            if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
+        let oy = if nr.top() < 0 { -nr.top() } else
+            if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
+        nr.offset(ox, oy);
+
         let new_crop = Crop { x: max(0, nr.left()) as u16, y: max(0, nr.top()) as u16,
         w: min(WIDTH as u32, nr.width()) as u16, h: min(HEIGHT as u32, nr.height()) as u16 };
         if new_crop == self.crop { return false; }
@@ -116,12 +122,6 @@ fn main() {
                                 let mut nr: Rect = channel.crop.into();
                                 let (dx, dy) = scale_point_from_window(mouse_pos, s, WIDTH as i32, HEIGHT as i32, 0, 0);
                                 nr.offset(dx, dy);
-                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
-                                let ox = if nr.left() < 0 { -nr.left() } else
-                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
-                                let oy = if nr.top() < 0 { -nr.top() } else
-                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
-                                nr.offset(ox, oy);
                                 if channel.set_crop(nr) {
                                     update_video(& mut canvas, & mut state);
                                 }
@@ -133,12 +133,6 @@ fn main() {
                                 let mut nr: Rect = channel.crop.into();
                                 let (dx, dy) = scale_point_from_window(s, mouse_pos, WIDTH as i32, HEIGHT as i32, 0, 0);
                                 nr.offset(dx, dy);
-                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nr.width(), nr.height());
-                                let ox = if nr.left() < 0 { -nr.left() } else
-                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
-                                let oy = if nr.top() < 0 { -nr.top() } else
-                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
-                                nr.offset(ox, oy);
                                 if channel.set_crop(nr) {
                                     update_video(& mut canvas, & mut state);
                                 }
@@ -168,14 +162,7 @@ fn main() {
                             let nw = (r.width()  as f32 * factor) as u32;
                             let nh = (r.height() as f32 * factor) as u32;
                             let nr = if nw >= WIDTH as u32 || nh >= HEIGHT as u32 { FULL_CROP.into() } else {
-                                let mut nr = Rect::from_center(p, nw, nh);
-                                eprintln!("nr = {:?}, w = {}, h = {}", nr, nw, nh);
-                                let ox = if nr.left() < 0 { -nr.left() } else
-                                    if nr.right() >= WIDTH as i32 { WIDTH as i32 - nr.right() - 1 }  else { 0 };
-                                let oy = if nr.top() < 0 { -nr.top() } else
-                                    if nr.bottom() >= HEIGHT as i32 { HEIGHT as i32 - nr.bottom() - 1 }  else { 0 };
-                                nr.offset(ox, oy);
-                                nr
+                                Rect::from_center(p, nw, nh)
                             };
                             if channel.set_crop(nr) {
                                 update_video(& mut canvas, & mut state);
