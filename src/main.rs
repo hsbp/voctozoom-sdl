@@ -117,28 +117,24 @@ fn main() {
                     mouse_pos = (x, y);
                     if let Some(s) = left_mouse_start_pos {
                         'motion_states: for channel in &mut state {
-                            if channel.zoom_rect.contains_point(s) &&
+                            let (p1, p2) = if channel.zoom_rect.contains_point(s) &&
                                     channel.zoom_rect.contains_point(mouse_pos) {
-                                let mut nr: Rect = channel.crop.into();
-                                let (dx, dy) = scale_point_from_window(mouse_pos, s, WIDTH as i32, HEIGHT as i32, 0, 0);
-                                nr.offset(dx, dy);
-                                if channel.set_crop(nr) {
-                                    update_video(& mut canvas, & mut state);
-                                }
-                                left_mouse_start_pos = Some(mouse_pos);
-                                break 'motion_states;
+                                (mouse_pos, s)
                             }
-                            if channel.full_rect.contains_point(s) &&
+                            else if channel.full_rect.contains_point(s) &&
                                     channel.full_rect.contains_point(mouse_pos) {
-                                let mut nr: Rect = channel.crop.into();
-                                let (dx, dy) = scale_point_from_window(s, mouse_pos, WIDTH as i32, HEIGHT as i32, 0, 0);
-                                nr.offset(dx, dy);
-                                if channel.set_crop(nr) {
-                                    update_video(& mut canvas, & mut state);
-                                }
-                                left_mouse_start_pos = Some(mouse_pos);
-                                break 'motion_states;
+                                (s, mouse_pos)
                             }
+                            else { continue; };
+
+                            let mut nr: Rect = channel.crop.into();
+                            let (dx, dy) = scale_point_from_window(p1, p2, WIDTH as i32, HEIGHT as i32, 0, 0);
+                            nr.offset(dx, dy);
+                            if channel.set_crop(nr) {
+                                update_video(& mut canvas, & mut state);
+                            }
+                            left_mouse_start_pos = Some(mouse_pos);
+                            break 'motion_states;
                         }
                     }
                 },
