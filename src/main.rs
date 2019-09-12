@@ -102,14 +102,13 @@ fn main() {
         // render faster than your display rate (usually 60Hz or 144Hz)
         .build().unwrap();
 
-    get_video(& mut state);
-    update_video(& mut canvas, & mut state);
-
     let mut event_pump = sdl.event_pump().unwrap();
     let mut left_mouse_start_pos: Option<(i32, i32)> = None;
     let mut mouse_pos: (i32, i32) = (0, 0);
 
     'main: loop {
+        get_video(& mut state);
+        update_video(& mut canvas, & mut state);
         for event in event_pump.wait_timeout_iter(200) {
             match event {
                 sdl2::event::Event::Quit {..} => break 'main,
@@ -170,8 +169,6 @@ fn main() {
                 _ => {},
             }
         }
-        get_video(& mut state);
-        update_video(& mut canvas, & mut state);
     }
 }
 
