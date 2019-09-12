@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::io::{BufRead,BufReader};
 use std::cmp::{min,max};
 
+use sdl2::mouse::MouseButton;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
 use sdl2::render::Canvas;
@@ -99,7 +100,7 @@ fn main() {
     update_video(& mut canvas, & mut state);
 
     let mut event_pump = sdl.event_pump().unwrap();
-    let mut mouse_start_pos: Option<(i32, i32)> = None;
+    let mut left_mouse_start_pos: Option<(i32, i32)> = None;
     let mut mouse_pos: (i32, i32) = (0, 0);
 
     'main: loop {
@@ -108,7 +109,7 @@ fn main() {
                 sdl2::event::Event::Quit {..} => break 'main,
                 sdl2::event::Event::MouseMotion { x, y, .. } => {
                     mouse_pos = (x, y);
-                    if let Some(s) = mouse_start_pos {
+                    if let Some(s) = left_mouse_start_pos {
                         'motion_states: for channel in &mut state {
                             if channel.zoom_rect.contains_point(s) &&
                                     channel.zoom_rect.contains_point(mouse_pos) {
@@ -124,7 +125,7 @@ fn main() {
                                 if channel.set_crop(nr) {
                                     update_video(& mut canvas, & mut state);
                                 }
-                                mouse_start_pos = Some(mouse_pos);
+                                left_mouse_start_pos = Some(mouse_pos);
                                 break 'motion_states;
                             }
                             if channel.full_rect.contains_point(s) &&
@@ -141,17 +142,21 @@ fn main() {
                                 if channel.set_crop(nr) {
                                     update_video(& mut canvas, & mut state);
                                 }
-                                mouse_start_pos = Some(mouse_pos);
+                                left_mouse_start_pos = Some(mouse_pos);
                                 break 'motion_states;
                             }
                         }
                     }
                 },
-                sdl2::event::Event::MouseButtonDown { x, y, .. } => {
-                    mouse_start_pos = Some((x, y));
+                sdl2::event::Event::MouseButtonDown { x, y, mouse_btn, .. } => {
+                    if mouse_btn == MouseButton::Left {
+                        left_mouse_start_pos = Some((x, y));
+                    }
                 },
-                sdl2::event::Event::MouseButtonUp {..} => {
-                    mouse_start_pos = None;
+                sdl2::event::Event::MouseButtonUp { mouse_btn, ..} => {
+                    if mouse_btn == MouseButton::Left {
+                        left_mouse_start_pos = None;
+                    }
                 },
                 sdl2::event::Event::MouseWheel { y, .. } => {
                     'wheel_states: for channel in &mut state {
