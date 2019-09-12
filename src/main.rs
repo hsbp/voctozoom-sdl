@@ -4,6 +4,7 @@ use std::net::{TcpStream};
 use std::io::{Read, Write};
 use std::io::{BufRead,BufReader};
 use std::cmp::{min,max};
+use std::time::Instant;
 
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{Color, PixelFormatEnum};
@@ -109,10 +110,23 @@ fn main() {
     let mut right_mouse_start_pos: Option<(i32, i32)> = None;
     let mut mouse_pos: (i32, i32) = (0, 0);
 
+    let mut needs_update = true;
+    let mut last_video = Instant::now();
+    get_video(& mut state);
+
     'main: loop {
-        get_video(& mut state);
-        update_video(& mut canvas, & mut state);
-        for event in event_pump.wait_timeout_iter(200) {
+        if last_video.elapsed().as_millis() > 200 {
+            last_video = Instant::now();
+            get_video(& mut state);
+            needs_update = true;
+        }
+
+        if needs_update {
+            update_video(& mut canvas, & mut state);
+            needs_update = false;
+        }
+
+        for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit {..} => break 'main,
                 sdl2::event::Event::MouseMotion { x, y, .. } => {
@@ -133,7 +147,7 @@ fn main() {
                             let (dx, dy) = scale_point_from_window(p1, p2, WIDTH as i32, HEIGHT as i32, 0, 0);
                             nr.offset(dx, dy);
                             if channel.set_crop(nr) {
-                                update_video(& mut canvas, & mut state);
+                                needs_update = true;
                             }
                             left_mouse_start_pos = Some(mouse_pos);
                             break 'motion_left_states;
@@ -147,7 +161,7 @@ fn main() {
                                     channel.full_rect.contains_point(mouse_pos)) {
                                 channel.preview = Rect::from_enclose_points(
                                     &[Point::from(mouse_pos), Point::from(s)], None);
-                                update_video(& mut canvas, & mut state);
+                                needs_update = true;
                             }
                             break 'motion_right_states;
                         }
@@ -170,7 +184,7 @@ fn main() {
                         for channel in &mut state {
                             channel.preview = None;
                         }
-                        update_video(& mut canvas, & mut state);
+                        needs_update = true;
                     }
                 },
                 sdl2::event::Event::MouseWheel { y, .. } => {
@@ -186,7 +200,7 @@ fn main() {
                                 Rect::from_center(p, nw, nh)
                             };
                             if channel.set_crop(nr) {
-                                update_video(& mut canvas, & mut state);
+                                needs_update = true;
                             }
                             break 'wheel_states;
                         }
