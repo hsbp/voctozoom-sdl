@@ -181,10 +181,36 @@ fn main() {
                     }
                     else if mouse_btn == MouseButton::Right {
                         right_mouse_start_pos = None;
-                        for channel in &mut state {
-                            channel.preview = None;
+                        'mouseup_states: for channel in &mut state {
+                            if let Some(r) = channel.preview {
+                                let (crop, frame) = if channel.zoom_rect.contains_rect(r) {
+                                    (channel.crop, channel.zoom_rect)
+                                } else if channel.full_rect.contains_rect(r) {
+                                    (FULL_CROP, channel.full_rect)
+                                } else { continue 'mouseup_states; };
+                                let (x, y) = scale_point_from_window(
+                                    frame.top_left().into(), r.top_left().into(),
+                                    crop.w as i32, crop.h as i32, crop.x as i32, crop.y as i32);
+                                let scaled_width  = r.width()  * WIDTH  as u32 / crop.w as u32;
+                                let scaled_height = r.height() * HEIGHT as u32 / crop.h as u32;
+
+                                let proposed_height = scaled_width * HEIGHT as u32 / WIDTH as u32;
+                                let (nw, nh) = if proposed_height > scaled_height {
+                                    (scaled_width, proposed_height)
+                                } else {
+                                    (scaled_height * WIDTH as u32 / HEIGHT as u32, scaled_height)
+                                };
+
+                                if channel.set_crop(Rect::from_center(
+                                        (x + scaled_width as i32, y + scaled_height as i32),
+                                        nw * 2, nh * 2)) {
+                                    needs_update = true;
+                                }
+
+                                channel.preview = None;
+                                break 'mouseup_states;
+                            }
                         }
-                        needs_update = true;
                     }
                 },
                 sdl2::event::Event::MouseWheel { y, .. } => {
