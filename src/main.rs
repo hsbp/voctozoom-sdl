@@ -7,7 +7,7 @@ use std::cmp::{min,max};
 
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{Color, PixelFormatEnum};
-use sdl2::rect::Rect;
+use sdl2::rect::{Point, Rect};
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::surface::Surface;
@@ -44,6 +44,7 @@ struct ChannelState {
     zoom_rect: Rect,
     server: TcpStream,
     frame: Vec<u8>,
+    preview: Option<Rect>,
 }
 
 impl ChannelState {
@@ -92,6 +93,7 @@ fn main() {
         zoom_rect: Rect::new(0, WIN_HEIGHT as i32, WIN_WIDTH, WIN_HEIGHT),
         server: TcpStream::connect("127.0.0.1:20000").unwrap(),
         frame: vec![0; BYTES_PER_FRAME],
+        preview: None,
         // TODO add second channel
     }];
 
@@ -104,6 +106,7 @@ fn main() {
 
     let mut event_pump = sdl.event_pump().unwrap();
     let mut left_mouse_start_pos: Option<(i32, i32)> = None;
+    let mut right_mouse_start_pos: Option<(i32, i32)> = None;
     let mut mouse_pos: (i32, i32) = (0, 0);
 
     'main: loop {
@@ -115,7 +118,7 @@ fn main() {
                 sdl2::event::Event::MouseMotion { x, y, .. } => {
                     mouse_pos = (x, y);
                     if let Some(s) = left_mouse_start_pos {
-                        'motion_states: for channel in &mut state {
+                        'motion_left_states: for channel in &mut state {
                             let (p1, p2) = if channel.zoom_rect.contains_point(s) &&
                                     channel.zoom_rect.contains_point(mouse_pos) {
                                 (mouse_pos, s)
@@ -133,7 +136,20 @@ fn main() {
                                 update_video(& mut canvas, & mut state);
                             }
                             left_mouse_start_pos = Some(mouse_pos);
-                            break 'motion_states;
+                            break 'motion_left_states;
+                        }
+                    }
+                    if let Some(s) = right_mouse_start_pos {
+                        'motion_right_states: for channel in &mut state {
+                            if (channel.zoom_rect.contains_point(s) &&
+                                    channel.zoom_rect.contains_point(mouse_pos)) ||
+                               (channel.full_rect.contains_point(s) &&
+                                    channel.full_rect.contains_point(mouse_pos)) {
+                                channel.preview = Rect::from_enclose_points(
+                                    &[Point::from(mouse_pos), Point::from(s)], None);
+                                update_video(& mut canvas, & mut state);
+                            }
+                            break 'motion_right_states;
                         }
                     }
                 },
@@ -141,10 +157,20 @@ fn main() {
                     if mouse_btn == MouseButton::Left {
                         left_mouse_start_pos = Some((x, y));
                     }
+                    else if mouse_btn == MouseButton::Right {
+                        right_mouse_start_pos = Some((x, y));
+                    }
                 },
                 sdl2::event::Event::MouseButtonUp { mouse_btn, ..} => {
                     if mouse_btn == MouseButton::Left {
                         left_mouse_start_pos = None;
+                    }
+                    else if mouse_btn == MouseButton::Right {
+                        right_mouse_start_pos = None;
+                        for channel in &mut state {
+                            channel.preview = None;
+                        }
+                        update_video(& mut canvas, & mut state);
                     }
                 },
                 sdl2::event::Event::MouseWheel { y, .. } => {
@@ -218,6 +244,11 @@ fn update_video(canvas: & mut Canvas<Window>, state: & mut [ChannelState]) {
 
         canvas.set_draw_color(Color::RGB(255, 0, 0));
         canvas.draw_rect(selected).unwrap();
+
+        if let Some(r) = channel.preview {
+            canvas.set_draw_color(Color::RGB(0, 255, 0));
+            canvas.draw_rect(r).unwrap();
+        }
     }
 
     // XXX eprintln!("{:?}", canvas.output_size());
