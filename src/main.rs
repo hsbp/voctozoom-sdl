@@ -191,8 +191,8 @@ fn main() {
                                 let (x, y) = scale_point_from_window(
                                     frame.top_left().into(), r.top_left().into(),
                                     crop.w as i32, crop.h as i32, crop.x as i32, crop.y as i32);
-                                let scaled_width  = r.width()  * WIDTH  as u32 / crop.w as u32;
-                                let scaled_height = r.height() * HEIGHT as u32 / crop.h as u32;
+                                let scaled_width  = r.width()  * crop.w as u32 / WIDTH  as u32;
+                                let scaled_height = r.height() * crop.h as u32 / HEIGHT as u32;
 
                                 let proposed_height = scaled_width * HEIGHT as u32 / WIDTH as u32;
                                 let (nw, nh) = if proposed_height > scaled_height {
