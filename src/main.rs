@@ -162,8 +162,8 @@ fn main() {
                                 channel.preview = Rect::from_enclose_points(
                                     &[Point::from(mouse_pos), Point::from(s)], None);
                                 needs_update = true;
+                                break 'motion_right_states;
                             }
-                            break 'motion_right_states;
                         }
                     }
                 },
