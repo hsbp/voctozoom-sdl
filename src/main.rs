@@ -71,7 +71,7 @@ impl ChannelState {
     }
 
     fn text_cmd(& mut self, cmd: String) -> String {
-        self.server.write(&cmd.into_bytes()).unwrap();
+        self.server.write_all(&cmd.into_bytes()).unwrap();
         let mut br = BufReader::new(&self.server);
         let mut line = String::new();
         br.read_line(&mut line).unwrap();
@@ -256,7 +256,7 @@ fn sanity_check(state: & mut [ChannelState]) {
 
 fn get_video(state: & mut [ChannelState]) {
     for channel in &mut state.iter_mut() {
-        channel.server.write(b"get_image\n").unwrap();
+        channel.server.write_all(b"get_image\n").unwrap();
         channel.server.read_exact(& mut channel.frame).unwrap();
     }
 }
