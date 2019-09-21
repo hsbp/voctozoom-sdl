@@ -63,10 +63,10 @@ impl ChannelState {
         let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", new_crop.w, new_crop.h, new_crop.x, new_crop.y));
         if line == "OK\n" {
             self.crop = new_crop;
-            return true;
+            true
         } else {
             eprintln!("{:?}", line);
-            return false;
+            false
         }
     }
 
