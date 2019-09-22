@@ -6,6 +6,7 @@ use std::io::{BufRead,BufReader};
 use std::cmp::{min,max};
 use std::time::Instant;
 
+use sdl2::keyboard::{Keycode, Mod};
 use sdl2::mouse::MouseButton;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::{Point, Rect};
@@ -46,6 +47,7 @@ struct ChannelState {
     server: TcpStream,
     frame: Vec<u8>,
     preview: Option<Rect>,
+    undo: Option<Crop>,
 }
 
 impl ChannelState {
@@ -62,6 +64,7 @@ impl ChannelState {
 
         let line = self.text_cmd(format!("zoom_to {}x{}+{}+{}\n", new_crop.w, new_crop.h, new_crop.x, new_crop.y));
         if line == "OK\n" {
+            self.undo = Some(self.crop);
             self.crop = new_crop;
             true
         } else {
@@ -95,6 +98,7 @@ fn main() {
         server: TcpStream::connect("127.0.0.1:20000").unwrap(),
         frame: vec![0; BYTES_PER_FRAME],
         preview: None,
+        undo: None,
         // TODO add second channel
     }];
 
@@ -232,6 +236,22 @@ fn main() {
                         }
                     }
                 },
+                sdl2::event::Event::KeyDown { keycode, keymod, .. } => {
+                    if keycode == Some(Keycode::Z) && !((keymod & (Mod::LCTRLMOD | Mod::RCTRLMOD)).is_empty()) {
+                        'keydown_cz_states: for channel in &mut state {
+                            if channel.zoom_rect.contains_point(mouse_pos) ||
+                                    channel.full_rect.contains_point(mouse_pos) {
+                                if let Some(c) = channel.undo {
+                                    if channel.set_crop(c.into()) {
+                                        channel.undo = None;
+                                        needs_update = true;
+                                    }
+                                }
+                                break 'keydown_cz_states
+                            }
+                        }
+                    }
+                }
                 _ => {},
             }
         }
