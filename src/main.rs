@@ -171,49 +171,45 @@ fn main() {
                         }
                     }
                 },
-                sdl2::event::Event::MouseButtonDown { x, y, mouse_btn, .. } => {
-                    if mouse_btn == MouseButton::Left {
-                        left_mouse_start_pos = Some((x, y));
-                    }
-                    else if mouse_btn == MouseButton::Right {
-                        right_mouse_start_pos = Some((x, y));
-                    }
+                sdl2::event::Event::MouseButtonDown { x, y, mouse_btn: MouseButton::Left, .. } => {
+                    left_mouse_start_pos = Some((x, y));
                 },
-                sdl2::event::Event::MouseButtonUp { mouse_btn, ..} => {
-                    if mouse_btn == MouseButton::Left {
-                        left_mouse_start_pos = None;
-                    }
-                    else if mouse_btn == MouseButton::Right {
-                        right_mouse_start_pos = None;
-                        'mouseup_states: for channel in &mut state {
-                            if let Some(r) = channel.preview {
-                                let (crop, frame) = if channel.zoom_rect.contains_rect(r) {
-                                    (channel.crop, channel.zoom_rect)
-                                } else if channel.full_rect.contains_rect(r) {
-                                    (FULL_CROP, channel.full_rect)
-                                } else { continue 'mouseup_states; };
-                                let (x, y) = scale_point_from_window(
-                                    frame.top_left().into(), r.top_left().into(),
-                                    crop.w as i32, crop.h as i32, crop.x as i32, crop.y as i32);
-                                let scaled_width  = r.width()  * crop.w as u32 / WIDTH  as u32;
-                                let scaled_height = r.height() * crop.h as u32 / HEIGHT as u32;
+                sdl2::event::Event::MouseButtonDown { x, y, mouse_btn: MouseButton::Right, .. } => {
+                    right_mouse_start_pos = Some((x, y));
+                },
+                sdl2::event::Event::MouseButtonUp { mouse_btn: MouseButton::Left, ..} => {
+                    left_mouse_start_pos = None;
+                },
+                sdl2::event::Event::MouseButtonUp { mouse_btn: MouseButton::Right, ..} => {
+                    right_mouse_start_pos = None;
+                    'mouseup_states: for channel in &mut state {
+                        if let Some(r) = channel.preview {
+                            let (crop, frame) = if channel.zoom_rect.contains_rect(r) {
+                                (channel.crop, channel.zoom_rect)
+                            } else if channel.full_rect.contains_rect(r) {
+                                (FULL_CROP, channel.full_rect)
+                            } else { continue 'mouseup_states; };
+                            let (x, y) = scale_point_from_window(
+                                frame.top_left().into(), r.top_left().into(),
+                                crop.w as i32, crop.h as i32, crop.x as i32, crop.y as i32);
+                            let scaled_width  = r.width()  * crop.w as u32 / WIDTH  as u32;
+                            let scaled_height = r.height() * crop.h as u32 / HEIGHT as u32;
 
-                                let proposed_height = scaled_width * HEIGHT as u32 / WIDTH as u32;
-                                let (nw, nh) = if proposed_height > scaled_height {
-                                    (scaled_width, proposed_height)
-                                } else {
-                                    (scaled_height * WIDTH as u32 / HEIGHT as u32, scaled_height)
-                                };
+                            let proposed_height = scaled_width * HEIGHT as u32 / WIDTH as u32;
+                            let (nw, nh) = if proposed_height > scaled_height {
+                                (scaled_width, proposed_height)
+                            } else {
+                                (scaled_height * WIDTH as u32 / HEIGHT as u32, scaled_height)
+                            };
 
-                                if channel.set_crop(Rect::from_center(
-                                        (x + scaled_width as i32, y + scaled_height as i32),
-                                        nw * 2, nh * 2)) {
-                                    needs_update = true;
-                                }
-
-                                channel.preview = None;
-                                break 'mouseup_states;
+                            if channel.set_crop(Rect::from_center(
+                                    (x + scaled_width as i32, y + scaled_height as i32),
+                                    nw * 2, nh * 2)) {
+                                needs_update = true;
                             }
+
+                            channel.preview = None;
+                            break 'mouseup_states;
                         }
                     }
                 },
@@ -236,8 +232,8 @@ fn main() {
                         }
                     }
                 },
-                sdl2::event::Event::KeyDown { keycode, keymod, .. } => {
-                    if keycode == Some(Keycode::Z) && !((keymod & (Mod::LCTRLMOD | Mod::RCTRLMOD)).is_empty()) {
+                sdl2::event::Event::KeyDown { keycode: Some(Keycode::Z), keymod, .. } => {
+                    if !((keymod & (Mod::LCTRLMOD | Mod::RCTRLMOD)).is_empty()) {
                         'keydown_cz_states: for channel in &mut state {
                             if channel.zoom_rect.contains_point(mouse_pos) ||
                                     channel.full_rect.contains_point(mouse_pos) {
