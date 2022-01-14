@@ -68,7 +68,7 @@ impl ChannelState {
             self.crop = new_crop;
             true
         } else {
-            eprintln!("{:?}", line);
+            eprintln!("{line:?}");
             false
         }
     }
@@ -264,8 +264,8 @@ fn scale_point_from_window(point: (i32, i32), offset: (i32, i32), width: i32, he
 
 fn sanity_check(state: & mut [ChannelState]) {
     for channel in &mut state.iter_mut() {
-        if channel.text_cmd(String::from("get_resolution\n")) != format!("{}x{}\n", WIDTH, HEIGHT) {
-            panic!("Invalid resolution, must be {}x{}", WIDTH, HEIGHT);
+        if channel.text_cmd(String::from("get_resolution\n")) != format!("{WIDTH}x{HEIGHT}\n") {
+            panic!("Invalid resolution, must be {WIDTH}x{HEIGHT}");
         }
     }
 }
